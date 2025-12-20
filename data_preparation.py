@@ -5,15 +5,16 @@ import os
 import csv
 import random
 import pickle
+from collections import Counter
 
 
 
-ENG_PATH =  "./Data_set/eng_sentences.tsv"
-TUR_PATH = "./Data_set/tur_sentences.tsv"
-LINKS_PATH = "./Data_set/eng-tur_links.tsv"
+ENG_PATH =  "./dataset/eng_sentences.tsv"
+TUR_PATH = "./dataset/tur_sentences.tsv"
+LINKS_PATH = "./dataset/eng-tur_links.tsv"
 
-OUT_DIR = "./Data_set/prepared_datas"
-VOCAB_DIR = "./Data_set/vocabs"
+OUT_DIR = "./dataset/prepared_datas"
+VOCAB_DIR = "./dataset/vocabs"
 
 MIN_WORDS = 2
 MAX_WORDS = 40
@@ -25,6 +26,7 @@ SEED = 25
 #%%
 ''' implementing the functions that will make the dataset ready for use. '''
 
+
 def built_dicts(PATH):
     lan_dict = dict()
     
@@ -34,7 +36,6 @@ def built_dicts(PATH):
             lan_dict[int(sid)] = text
     
     return lan_dict
-
 
 
 def built_pairs(PATH, eng_dict, tur_dict):
@@ -68,7 +69,8 @@ def write_parallel(pairs, prefix):
             f_en.write(en + "\n")
             f_tr.write(tr + "\n")
 
-def built_vocab(PATH):
+
+def built_vocab(pairs):
     def clean_token(token):
         token = token.lower()
 
@@ -76,24 +78,45 @@ def built_vocab(PATH):
         for ch in token:
             if ch.isalpha() or ch == "'":
                 cleaned_chars.append(ch)
-            
-            cleaned = "".join(cleaned_chars)
-            cleaned = cleaned.strip("'")
-    
+
+        cleaned = "".join(cleaned_chars)
+        cleaned = cleaned.strip("'")
+
         if cleaned == "":
             return ""
+        if len(cleaned) > 30:
+            return ""
+
+        repeat = 1
+        prev = ""
+        for ch in cleaned:
+            if ch == prev:
+                repeat += 1
+                if repeat >= 4:
+                    return ""
+            else:
+                prev = ch
+                repeat = 1
+
         return cleaned
-    
-    words = set()
-    with open(PATH, encoding='utf-8') as f:
-        tsv = csv.reader(f, delimiter='\t')
-        for sid,lang,text in tsv:
-            for token in text.split():
-                word = clean_token(token)
-                if word:
-                    words.add(word)
-    
-    return words
+
+    en_counter = Counter()
+    tr_counter = Counter()
+
+    for en_sentence, tr_sentence in pairs:
+
+        for raw in en_sentence.split():
+            word = clean_token(raw)
+            if word:
+                en_counter[word] += 1
+
+        for raw in tr_sentence.split():
+            word = clean_token(raw)
+            if word:
+                tr_counter[word] += 1
+
+    return en_counter, tr_counter
+
 
 def save_vocabs(en_words, tr_words):
     os.makedirs(VOCAB_DIR, exist_ok=True)
@@ -131,9 +154,12 @@ def main():
     write_parallel(train_pairs, "train")
     write_parallel(val_pairs, "val")
     write_parallel(test_pairs, "test")
-             
-    en_words = built_vocab(ENG_PATH)
-    tr_words = built_vocab(TUR_PATH)
+      
+    en_counter, tr_counter = built_vocab(pairs)
+       
+    MIN_FREQ = 3
+    en_words = set(w for w, c in en_counter.items() if c >= MIN_FREQ)
+    tr_words = set(w for w, c in tr_counter.items() if c >= MIN_FREQ)
     save_vocabs(en_words, tr_words)
     
 
