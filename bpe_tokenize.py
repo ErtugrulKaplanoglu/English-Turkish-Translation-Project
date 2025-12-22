@@ -110,27 +110,30 @@ class BPETokenizer:
         self.is_trained = False
 
     def train_from_texts(self, texts, min_frequency=2, max_merges=10000):
-        # 1) word frekansı
+       
         word_freq = {}
         for t in texts:
             for tok in word_tokenizer(t):
                 word_freq[tok] = word_freq.get(tok, 0) + 1
 
-        # 2) başlangıç vocab: word -> char symbols
+        
         vocab_symbols = {}
+        punctuation = {'.', ',', '!', '?'}
+        
         for w, f in word_freq.items():
+           
+            if len(w) == 1 and w in punctuation:
+                sym = (w, WORD_END)
+                vocab_symbols[sym] = vocab_symbols.get(sym, 0) + f
+                continue
+        
+          
             if f < min_frequency:
                 continue
-
-            # noktalama için BPE uygulamayalım: tek token kalsın
-            if len(w) == 1 and w in {'.', ',', '!', '?'}:
-                sym = (w, WORD_END)
-            else:
-                sym = tuple(_word_to_symbols(w))
-
+        
+            sym = tuple(_word_to_symbols(w))
             vocab_symbols[sym] = vocab_symbols.get(sym, 0) + f
 
-        # 3) merge döngüsü
         self.merges = []
         for _ in range(max_merges):
             pair_counts = _get_pair_counts(vocab_symbols)
