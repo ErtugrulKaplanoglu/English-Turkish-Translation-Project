@@ -282,12 +282,10 @@ def load_bpe_tr(path):
 
 
 def tokenize_en(text):
-    
-    return word_tokenizer(text)
+    return bpe_en.tokenize(text)
 
 def tokenize_tr(text):
-    
-    return word_tokenizer(text)
+    return bpe_tr.tokenize(text)
 
 def encode_ids_en(text):
     return bpe_en.encode_ids(text)
