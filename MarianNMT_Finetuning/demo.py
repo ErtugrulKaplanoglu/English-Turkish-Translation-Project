@@ -1,11 +1,9 @@
 import os
-# Önceki yazdığımız model dosyasından her şeyi içeri al
-# (Öğrenciler genelde import * yapıp geçer, kafa yormaz)
+
 from model import *
 
 def skorlari_goster():
     print("\n--- BLEU SKORLARI ---")
-    # Tabloyla uğraşmadım direkt yazdırdım
     print("EN -> TR: 45.20'den 52.54'e çıktı (+7.34 artış)")
     print("TR -> EN: 64.65'ten 66.42'ye çıktı (+1.77 artış)")
     print("Genel olarak model daha iyi çalışıyor.")
@@ -16,13 +14,11 @@ def ornek_ceviriler():
     
     print("TR -> EN Örnekleri:")
     for ornek in ornekler_tr:
-        # model.py'deki cevir fonksiyonunu kullanıyoruz
         sonuc = cevir(ornek, model_tr_en, tokenizer_tr_en)
         print(f"Girdi: {ornek}")
         print(f"Çıktı: {sonuc}\n")
 
 def main():
-    # Ekranı temizleme komutu (windows/linux ayrımı basitçe)
     try:
         os.system('cls' if os.name == 'nt' else 'clear')
     except:
