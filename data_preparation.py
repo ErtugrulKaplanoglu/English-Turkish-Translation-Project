@@ -1,4 +1,12 @@
-
+'''
+The raw dataset files are read.
+Sentences, along with their ID information, are transferred to the Python dictionary in the form {id : sentence}.
+Parallel sentence pairs are created in the form [(en_sentence, tr_sentence), ...] using dictionary and ID matching.
+The resulting pairs are divided into train, validation, and test sets and saved by writing them back to the files.
+Finally, for language detection, vocabs are created for both languages ​​using the sentences in the pairs list and written to the file.
+'''
+#%% 
+''' import operations, defining file paths and constants to be used. '''
 
 import os
 import csv
@@ -22,6 +30,9 @@ VAL_RATIO = 0.10
 TEST_RATIO = 0.10
 SEED = 25
 
+#%%
+''' implementing the functions that will make the dataset ready for use. '''
+
 def built_dicts(PATH):
     lan_dict = dict()
     
@@ -31,6 +42,7 @@ def built_dicts(PATH):
             lan_dict[int(sid)] = text
     
     return lan_dict
+
 
 
 def built_pairs(PATH, eng_dict, tur_dict):
@@ -79,6 +91,7 @@ def built_vocab(pairs):
 
         if cleaned == "":
             return ""
+
         if len(cleaned) > 30:
             return ""
 
@@ -112,6 +125,7 @@ def built_vocab(pairs):
 
     return en_counter, tr_counter
 
+        
 
 def save_vocabs(en_words, tr_words):
     os.makedirs(VOCAB_DIR, exist_ok=True)
@@ -163,5 +177,4 @@ def main():
 if __name__ == '__main__':
     main()
     
-
 
