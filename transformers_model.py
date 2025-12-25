@@ -1,8 +1,16 @@
+'''
+In this module, Tokenizer model architecture implemented again,
+Saved trained model file (with extension .pt) used
+Implementing the translate method will be called from main.py
+'''
 
 import torch
 import torch.nn as nn
 import math
 from transformers import PreTrainedTokenizerFast
+
+#%% 
+''' TRANSFORMER ARCHITECTURE '''
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, heads, dropout=0.1):
@@ -91,38 +99,102 @@ class ModelTransformer(nn.Module):
         return self.out(d_out)
 
 
+#%%
+''' 
+Class to serve outside (e.g. main.py)
+model_path parameter is used to take saved model address
+'''
+
 class Translator:
     def __init__(self, model_path, tokenizer_path):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_path, 
-                                                 unk_token="<unk>", pad_token="<pad>", 
-                                                 bos_token="<s>", eos_token="</s>")
+        self.tokenizer = PreTrainedTokenizerFast(
+            tokenizer_file=tokenizer_path,
+            unk_token="<unk>", pad_token="<pad>",
+            bos_token="<s>", eos_token="</s>"
+        )
         self.model = ModelTransformer(vocab_size=self.tokenizer.vocab_size).to(self.device)
         self.model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.model.eval()
-
+    
+    #Function that make translation by using model
     @torch.no_grad()
-    def translate(self, text, beam_size=5):
-        
+    def translate(
+        self,
+        text,
+        beam_size=5,
+        max_len=64,
+        length_penalty=0.7,
+        repetition_penalty=1.15,
+        no_repeat_ngram_size=3,
+    ):
         src = self.tokenizer(text, return_tensors="pt")["input_ids"].to(self.device)
-        
-        
-        beams = [(0.0, [self.tokenizer.bos_token_id])]
-        for _ in range(64):
+
+        bos = self.tokenizer.bos_token_id
+        eos = self.tokenizer.eos_token_id
+
+        def apply_repetition_penalty(log_probs, seq):
+            if repetition_penalty is None or repetition_penalty <= 1.0:
+                return log_probs
+            for t in set(seq):
+                if log_probs[t] < 0:
+                    log_probs[t] *= repetition_penalty
+                else:
+                    log_probs[t] /= repetition_penalty
+            return log_probs
+
+        def has_repeat_ngram(seq, n):
+            if n is None or n <= 0:
+                return False
+            if len(seq) < 2 * n:
+                return False
+            last = tuple(seq[-n:])
+            for i in range(len(seq) - n):
+                if tuple(seq[i:i+n]) == last:
+                    return True
+            return False
+
+        beams = [(0.0, [bos])]
+
+        for _ in range(max_len):
             candidates = []
+
             for score, seq in beams:
-                if seq[-1] == self.tokenizer.eos_token_id:
+                if seq[-1] == eos:
                     candidates.append((score, seq))
                     continue
-                out = self.model(src, torch.tensor([seq], device=self.device))
-                probs = torch.log_softmax(out[:, -1, :], dim=-1)
-                top_v, top_i = probs.topk(beam_size)
-                for i in range(beam_size):
-                    candidates.append((score + top_v[0][i].item(), seq + [top_i[0][i].item()]))
-            beams = sorted(candidates, key=lambda x: x[0], reverse=True)[:beam_size]
-            if all(s[-1] == self.tokenizer.eos_token_id for _, s in beams): break
-        
-        
-        decoded = self.tokenizer.decode(beams[0][1], skip_special_tokens=True)
 
-        return decoded.split(".")[0].strip() + "." if "." in decoded else decoded
+                out = self.model(src, torch.tensor([seq], device=self.device))
+                log_probs = torch.log_softmax(out[0, -1, :], dim=-1)
+
+                log_probs = apply_repetition_penalty(log_probs, seq)
+                top_v, top_i = torch.topk(log_probs, beam_size)
+
+                for i in range(beam_size):
+                    next_tok = top_i[i].item()
+                    new_seq = seq + [next_tok]
+
+                    if no_repeat_ngram_size and has_repeat_ngram(new_seq, no_repeat_ngram_size):
+                        continue
+
+                    new_score = score + top_v[i].item()
+                    candidates.append((new_score, new_seq))
+
+            if not candidates:
+                break
+
+            def normed(item):
+                s, seq = item
+                lp = ((5 + len(seq)) / 6) ** length_penalty
+                return s / lp
+
+            beams = sorted(candidates, key=normed, reverse=True)[:beam_size]
+
+            if all(seq[-1] == eos for _, seq in beams):
+                break
+
+        best_seq = beams[0][1]
+        if eos in best_seq:
+            best_seq = best_seq[: best_seq.index(eos) + 1]
+
+        return self.tokenizer.decode(best_seq, skip_special_tokens=True).strip()
