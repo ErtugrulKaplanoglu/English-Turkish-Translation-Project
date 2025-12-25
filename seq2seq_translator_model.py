@@ -3,9 +3,6 @@ import numpy as np
 import tensorflow as tf
 import sentencepiece as spm
 
-# =========================
-# Custom Layer (MUST match training)
-# =========================
 class DotAttention(tf.keras.layers.Layer):
     def call(self, inputs):
         query, value = inputs
@@ -14,10 +11,6 @@ class DotAttention(tf.keras.layers.Layer):
         context = tf.matmul(weights, value)                  # (B, Tt, H)
         return context
 
-
-# =========================
-# Translator Core
-# =========================
 class Seq2SeqTranslator:
     def __init__(
         self,
@@ -40,7 +33,6 @@ class Seq2SeqTranslator:
         self.emb_dim = emb_dim
         self.latent_dim = latent_dim
 
-        # Paths
         self.spm_path = os.path.join(models_dir, spm_file)
 
         self.en2tr_keras_path = os.path.join(models_dir, en2tr_file_keras)
@@ -49,7 +41,7 @@ class Seq2SeqTranslator:
         self.en2tr_h5_path = os.path.join(models_dir, en2tr_file_h5)
         self.tr2en_h5_path = os.path.join(models_dir, tr2en_file_h5)
 
-        # Load tokenizer
+
         if not os.path.exists(self.spm_path):
             raise FileNotFoundError(f"Tokenizer bulunamadı: {self.spm_path}")
 
@@ -101,7 +93,6 @@ class Seq2SeqTranslator:
                 compile=False
             )
 
-        # Fallback: weights-only .h5
         weights_path = self.en2tr_h5_path if direction == "en2tr" else self.tr2en_h5_path
         if not os.path.exists(weights_path):
             raise FileNotFoundError(
@@ -114,7 +105,6 @@ class Seq2SeqTranslator:
         model.load_weights(weights_path)
         return model
 
-    # ---------- Inference ----------
     def _encode_src(self, text: str) -> np.ndarray:
         ids = self.sp.encode(text, out_type=int)[: self.max_len]
         src = np.full((1, self.max_len), self.pad_id, dtype=np.int32)
@@ -154,10 +144,6 @@ class Seq2SeqTranslator:
         else:
             raise ValueError("lang must be 'eng' or 'tur'")
 
-
-# =========================
-# Singleton helper (models load once)
-# =========================
 _TRANSLATOR = None
 
 def get_translator() -> Seq2SeqTranslator:
@@ -167,7 +153,6 @@ def get_translator() -> Seq2SeqTranslator:
     return _TRANSLATOR
 
 
-# Convenience functions
 def translate_en2tr(text: str) -> str:
     return get_translator().translate_en2tr(text)
 
@@ -176,3 +161,4 @@ def translate_tr2en(text: str) -> str:
 
 def translate_auto(text: str, lang: str) -> str:
     return get_translator().translate_auto(text, lang)
+
