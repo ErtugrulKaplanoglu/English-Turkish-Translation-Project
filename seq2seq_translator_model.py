@@ -6,9 +6,9 @@ import sentencepiece as spm
 class DotAttention(tf.keras.layers.Layer):
     def call(self, inputs):
         query, value = inputs
-        scores = tf.matmul(query, value, transpose_b=True)   # (B, Tt, Ts)
-        weights = tf.nn.softmax(scores, axis=-1)             # softmax over Ts
-        context = tf.matmul(weights, value)                  # (B, Tt, H)
+        scores = tf.matmul(query, value, transpose_b=True)   
+        weights = tf.nn.softmax(scores, axis=-1)             
+        context = tf.matmul(weights, value)                  
         return context
 
 class Seq2SeqTranslator:
@@ -161,4 +161,5 @@ def translate_tr2en(text: str) -> str:
 
 def translate_auto(text: str, lang: str) -> str:
     return get_translator().translate_auto(text, lang)
+
 
