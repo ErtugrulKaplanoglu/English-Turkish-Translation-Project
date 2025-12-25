@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 
 import torch
 import torch.nn as nn
 import math
 from transformers import PreTrainedTokenizerFast
 
-# --- TRANSFORMER ARCHITECTURE
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, heads, dropout=0.1):
         super().__init__()
@@ -126,4 +124,5 @@ class Translator:
         
         
         decoded = self.tokenizer.decode(beams[0][1], skip_special_tokens=True)
+
         return decoded.split(".")[0].strip() + "." if "." in decoded else decoded
