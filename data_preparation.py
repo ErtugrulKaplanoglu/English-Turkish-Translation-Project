@@ -1,5 +1,4 @@
-#%% 
-''' import operations, defining file paths and constants to be used. '''
+
 
 import os
 import csv
@@ -22,10 +21,6 @@ TRAIN_RATIO = 0.80
 VAL_RATIO = 0.10
 TEST_RATIO = 0.10
 SEED = 25
-
-#%%
-''' implementing the functions that will make the dataset ready for use. '''
-
 
 def built_dicts(PATH):
     lan_dict = dict()
@@ -168,4 +163,5 @@ def main():
 if __name__ == '__main__':
     main()
     
+
 
